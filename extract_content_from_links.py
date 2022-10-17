@@ -75,12 +75,10 @@ def fetch_page_content(url,ct):
                 try:
                     # print(x) 
                     if 'manufacturer' in x['href']:
-                        page_data['manufacturer_link'] = x['href']
+                        page_data['manufacturer_link'] = "https://www.1mg.com" + x['href']
                         page_data['manufacturer'] = x.getText()
-                    elif not (page_data['manufacturer_link'] and page_data['manufacturer']):
-                        page_data['manufacturer_link'] = ""
-                        page_data['manufacturer'] = ""
-                except:
+                except Exception as e:
+                    print(e)
                     # print("No href in manufacture anchor tag")
                     page_data['manufacturer_link'] = ""
                     page_data['manufacturer'] = ""
@@ -88,16 +86,15 @@ def fetch_page_content(url,ct):
                 try:
                     # print(x) 
                     if 'generics' in x['href']:
-                        page_data['salt_composition_link'] = x['href']
+                        page_data['salt_composition_link'] = "https://www.1mg.com" + x['href']
                         page_data['salt_composition'] = x.getText()
-                    else:
-                        if not (page_data['salt_composition_link'] and page_data['salt_composition']):
-                            page_data['salt_composition_link'] = ""
-                            page_data['salt_composition'] = ""
-                except:
+                        page_data['salt_composition_content'] = extract_salt_composition_data(page_data['salt_composition_link'])
+                except Exception as e:
+                    print(e)
                     # print("No href in salt composition anchor tag")
                     page_data['salt_composition_link'] = ""
                     page_data['salt_composition'] = ""
+                    page_data['salt_composition_content'] = ""
             
             # overview / product info
             info_content = content.find('div',{'id':'overview'}).find('div',{'class':re.compile('^DrugOverview__content')})
@@ -164,6 +161,30 @@ def fetch_page_content(url,ct):
         print(f"Error URL: {url}")
     return page_data
 
+def extract_salt_composition_data(url):
+    time.sleep(0.5)
+    salt_data = ""
+    base_html = requests.get(url=url,headers=header)
+    
+    if base_html.status_code == 200:
+        # print(f"----- Fetching : {url} ------")
+        base_bs_obj = soup(base_html.text,'html.parser')
+        base_clean_obj = clean_script(base_bs_obj)
+        try:
+            x = base_clean_obj.find('div',{'class':re.compile('^GenericSaltStyle__row')}).find('div',{'class':re.compile('^GenericSaltStyle__col')})
+            for blc in x.findAll(re.compile('h\d')):
+                blc.decompose()
+            for y in x.findAll('div',{'class':re.compile('GenericSaltStyle__fCol')}):
+                salt_data += y.text + "\n"
+        except Exception as e:
+            print("Salt Extract: ")
+            print(e)
+            salt_data = ""
+    else:
+        print(f"---- Status code : {base_html.status_code} ----")
+        print(f"\n Error URL: {url}")
+    
+    return salt_data
 
 if __name__ == "__main__":
     
